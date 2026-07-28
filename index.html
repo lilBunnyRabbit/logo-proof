@@ -1,0 +1,248 @@
+<!doctype html>
+<html lang="en" class="shape-circle">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Proof — press check for a new mark</title>
+<meta name="description" content="Drop a logo and see it everywhere it has to work: avatars, favicons, link cards, app icons, print.">
+<meta name="theme-color" content="#d6d7d1" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#171819" media="(prefers-color-scheme: dark)">
+
+<!-- Relative, so the page works from file:// and from any Pages subpath. -->
+<link rel="icon" href="favicon.svg" type="image/svg+xml">
+<link rel="canonical" href="https://lilbunnyrabbit.github.io/logo-proof/">
+
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="Proof">
+<meta property="og:title" content="Proof — press check for a new mark">
+<meta property="og:description" content="Drop a logo and see it everywhere it has to work: avatars, favicons, link cards, app icons, print.">
+<meta property="og:url" content="https://lilbunnyrabbit.github.io/logo-proof/">
+<meta property="og:image" content="https://lilbunnyrabbit.github.io/logo-proof/og.png">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta property="og:image:alt" content="A prepress proof sheet: the word PROOF beside tiles showing a mark as a favicon, an avatar, an app icon and a link card.">
+<meta name="twitter:card" content="summary_large_image">
+
+<link rel="stylesheet" href="css/app.css">
+<link rel="stylesheet" href="css/kit.css">
+</head>
+<body>
+
+<a class="skip" href="#sheet">Skip to proof sheet</a>
+
+<header class="bar">
+  <div class="bar-brand">
+    <svg class="reg" viewBox="0 0 24 24" aria-hidden="true">
+      <circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="4"/>
+      <path d="M12 0v6M12 18v6M0 12h6M18 12h6"/>
+    </svg>
+    <span class="wordmark">Proof</span>
+    <span class="bar-sub">press check for a new mark</span>
+  </div>
+
+  <div class="bar-spec" id="spec" aria-live="polite">
+    <span class="spec-empty">no plate loaded</span>
+  </div>
+
+  <div class="bar-ink" id="inkbar" hidden aria-label="Ink pulled from the mark"></div>
+
+  <div class="bar-tools">
+    <label class="squint" title="Blur the whole sheet the way a press operator squints at a proof">
+      <span class="lbl">Squint</span>
+      <input type="range" id="squint" min="0" max="6" step="0.5" value="0">
+      <output id="squint-out" class="mono">0.0</output>
+    </label>
+    <button class="btn ghost" id="btn-gray" aria-pressed="false" title="Drop all colour, keep value">Grey</button>
+    <button class="btn ghost" id="btn-theme" title="Press-room lights">Lights</button>
+    <button class="btn solid" id="btn-export" disabled>Export pack</button>
+  </div>
+</header>
+
+<main class="shell">
+
+  <aside class="rail" id="rail">
+    <div class="ticket">
+      <div class="ticket-head">
+        <span class="ticket-no mono">JOB 001</span>
+        <span class="ticket-t">Plate</span>
+      </div>
+
+      <div class="drop" id="drop" tabindex="0" role="button"
+           aria-label="Add a logo: click to choose a file, or drop one here, or press Command V to paste">
+        <div class="drop-art" aria-hidden="true">
+          <span class="cm cm-tl"></span><span class="cm cm-tr"></span>
+          <span class="cm cm-bl"></span><span class="cm cm-br"></span>
+          <svg viewBox="0 0 48 48" class="drop-icon">
+            <path d="M24 34V12M24 12l-8 8M24 12l8 8"/><path d="M8 32v6h32v-6"/>
+          </svg>
+        </div>
+        <p class="drop-1">Drop the mark</p>
+        <p class="drop-2">click · drag · <kbd>⌘V</kbd></p>
+        <p class="drop-3 mono">PNG SVG JPG WEBP GIF</p>
+        <input type="file" id="file" accept="image/*,.svg" hidden>
+      </div>
+
+      <div class="drop-alt">
+        <button class="link" id="btn-sample">Load a sample mark</button>
+        <span class="drop-hint mono">up to 4 plates</span>
+      </div>
+
+      <div class="plates" id="platelist" hidden></div>
+
+      <div class="field" id="cmpfield" hidden>
+        <span class="field-l">Compare</span>
+        <div class="seg seg-3" id="cmpseg" role="radiogroup" aria-label="Compare plates">
+          <button role="radio" aria-checked="true"  data-cmp="single">One</button>
+          <button role="radio" aria-checked="false" data-cmp="split">Split</button>
+          <button role="radio" aria-checked="false" data-cmp="blink">Blink</button>
+        </div>
+      </div>
+
+      <div class="field" id="blinkfield" hidden>
+        <label class="field-l" for="blinkms">Rate</label>
+        <input type="range" id="blinkms" min="300" max="2500" step="100" value="1000">
+        <output class="mono" id="blinkms-out">1.0s</output>
+      </div>
+
+      <div class="warn" id="warn" hidden></div>
+    </div>
+
+    <section class="ctrl" aria-labelledby="h-trim">
+      <h2 class="ctrl-h" id="h-trim">Registration</h2>
+
+      <div class="field">
+        <span class="field-l">Mask</span>
+        <div class="seg" id="maskseg" role="radiogroup" aria-label="Default mask">
+          <button role="radio" aria-checked="true"  data-shape="circle">Circle</button>
+          <button role="radio" aria-checked="false" data-shape="squircle">Squircle</button>
+          <button role="radio" aria-checked="false" data-shape="rounded">Round</button>
+          <button role="radio" aria-checked="false" data-shape="sharp">Square</button>
+        </div>
+      </div>
+
+      <div class="field" id="field-round" hidden>
+        <label class="field-l" for="round">Corner</label>
+        <input type="range" id="round" min="0" max="50" step="1" value="22">
+        <output class="mono" id="round-out">22%</output>
+      </div>
+
+      <div class="field">
+        <label class="field-l" for="zoom">Scale</label>
+        <input type="range" id="zoom" min="40" max="260" step="1" value="100">
+        <output class="mono" id="zoom-out">100%</output>
+      </div>
+
+      <div class="field">
+        <label class="field-l" for="pad">Padding</label>
+        <input type="range" id="pad" min="0" max="30" step="1" value="0">
+        <output class="mono" id="pad-out">0%</output>
+      </div>
+
+      <div class="field">
+        <label class="field-l" for="ox">Nudge X</label>
+        <input type="range" id="ox" min="-50" max="50" step="1" value="0">
+        <output class="mono" id="ox-out">0</output>
+      </div>
+
+      <div class="field">
+        <label class="field-l" for="oy">Nudge Y</label>
+        <input type="range" id="oy" min="-50" max="50" step="1" value="0">
+        <output class="mono" id="oy-out">0</output>
+      </div>
+
+      <div class="field">
+        <span class="field-l">Backdrop</span>
+        <div class="chips" id="bgchips" role="radiogroup" aria-label="Backdrop behind the mark"></div>
+      </div>
+
+      <div class="field field-check">
+        <label><input type="checkbox" id="trim"> Trim empty margins</label>
+      </div>
+      <div class="field field-check">
+        <label><input type="checkbox" id="safe"> Show safe zone</label>
+      </div>
+      <div class="field field-check">
+        <label><input type="checkbox" id="truepx" checked> True pixels under 34&nbsp;px</label>
+      </div>
+
+      <button class="btn wide ghost" id="btn-reset">Reset registration</button>
+    </section>
+
+    <section class="ctrl" id="inkctrl" hidden aria-labelledby="h-ink">
+      <h2 class="ctrl-h" id="h-ink">Ink</h2>
+      <div class="inks" id="inklist"></div>
+      <div class="ink-acts" id="inkacts">
+        <button class="link" data-ink="black">All black</button>
+        <button class="link" data-ink="white">All white</button>
+        <button class="link" data-ink="accent">All accent</button>
+        <button class="link" data-ink="reset">Reset</button>
+      </div>
+      <p class="ink-note" id="inknote"></p>
+    </section>
+
+    <section class="ctrl" aria-labelledby="h-copy">
+      <h2 class="ctrl-h" id="h-copy">Copy</h2>
+      <label class="tf"><span>Brand</span><input id="f-brand" value="Astra AI"></label>
+      <label class="tf"><span>Handle</span><input id="f-handle" value="astra_ai"></label>
+      <label class="tf"><span>Domain</span><input id="f-domain" value="astra-ai.co"></label>
+      <label class="tf"><span>Tagline</span><input id="f-tagline" value="Ship the boring parts faster"></label>
+      <label class="tf"><span>Person</span><input id="f-person" value="Andraž"></label>
+      <label class="tf"><span>Role</span><input id="f-role" value="Founder"></label>
+    </section>
+
+    <section class="ctrl" aria-labelledby="h-show">
+      <h2 class="ctrl-h" id="h-show">Sheet</h2>
+      <div class="chips" id="groupchips" role="group" aria-label="Sections on the sheet"></div>
+      <label class="tf tf-search"><span>Find</span><input id="f-search" placeholder="tab, discord, sticker…"></label>
+      <div class="field">
+        <label class="field-l" for="dense">Tile size</label>
+        <input type="range" id="dense" min="260" max="520" step="10" value="340">
+        <output class="mono" id="dense-out">340</output>
+      </div>
+    </section>
+
+    <p class="rail-foot mono">Everything renders locally.<br>No upload, no network.</p>
+  </aside>
+
+  <section class="sheet" id="sheet" aria-label="Proof sheet">
+    <div class="empty" id="empty">
+      <div class="empty-marks" aria-hidden="true">
+        <span></span><span></span><span></span><span></span><span></span><span></span>
+      </div>
+      <h1>Eighty places your mark has to survive.</h1>
+      <p>Drop a file to pull the proof. A 16&nbsp;px tab, a Discord rail, a business card, a T-shirt. Same mark, no mercy.</p>
+    </div>
+    <section class="report" id="report" hidden aria-label="Legibility report"></section>
+    <div class="groups" id="groups"></div>
+  </section>
+</main>
+
+<div class="drag-veil" id="veil" aria-hidden="true"><span>Release to pull a new proof</span></div>
+
+<dialog class="sheetdlg" id="exportdlg">
+  <form method="dialog" class="dlg-x"><button aria-label="Close">✕</button></form>
+  <h2 class="dlg-h">Export pack</h2>
+  <p class="dlg-p">Rendered from the current registration — mask, scale, padding, backdrop and all.</p>
+  <div class="dlg-grid" id="dlg-grid"></div>
+  <div class="dlg-foot">
+    <button class="btn solid" id="btn-zip">Download .zip</button>
+    <span class="mono dim" id="zip-note">favicons · avatars · app icons · manifest · snippet</span>
+  </div>
+</dialog>
+
+<script src="js/zip.js"></script>
+<script src="js/palette.js"></script>
+<script src="js/recolor.js"></script>
+<script src="js/core.js"></script>
+<script src="js/export.js"></script>
+<script src="js/scenes/social.js"></script>
+<script src="js/scenes/messaging.js"></script>
+<script src="js/scenes/web.js"></script>
+<script src="js/scenes/favicon.js"></script>
+<script src="js/scenes/link.js"></script>
+<script src="js/scenes/app.js"></script>
+<script src="js/scenes/print.js"></script>
+<script src="js/scenes/stress.js"></script>
+<script>window.LogoLab && LogoLab.boot();</script>
+</body>
+</html>

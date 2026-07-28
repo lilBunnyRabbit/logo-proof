@@ -1,0 +1,44 @@
+/* Scene kit — the only shared classes scene modules may use.
+   Everything else a scene needs, it ships in its own LogoLab.css() block
+   with its own class prefix. Nothing here inherits app chrome type. */
+
+.kit {
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto,
+               "Helvetica Neue", Arial, sans-serif;
+  color: #111;
+  line-height: 1.35;
+  -webkit-font-smoothing: antialiased;
+}
+.kit * { box-sizing: border-box; }
+.kit img { display: block; }
+
+/* layout atoms */
+.kit-row { display: flex; align-items: center; }
+.kit-col { display: flex; flex-direction: column; }
+.kit-fill { flex: 1 1 auto; min-width: 0; }
+.kit-ell { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0; }
+.kit-clamp2 {
+  display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+/* surfaces */
+.kit-frame { overflow: hidden; position: relative; }
+.kit-shadow { box-shadow: 0 1px 3px rgba(0,0,0,.12), 0 8px 24px -10px rgba(0,0,0,.3); }
+.kit-hr { height: 1px; background: currentColor; opacity: .12; }
+
+/* grey placeholder bars — stand in for copy that is not the point of the mock.
+   width: style="--w:70%"  height: style="--h:8px" */
+.kit-ph {
+  width: var(--w, 100%); height: var(--h, 8px);
+  border-radius: 999px; background: currentColor; opacity: .13;
+}
+.kit-ph + .kit-ph { margin-top: 6px; }
+
+.kit-mono { font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace; }
+.kit-dim { opacity: .55; }
+
+/* icons handed out by ctx.icon() */
+.kit-i { display: block; flex: none; fill: none; stroke: currentColor; stroke-width: 1.8;
+         stroke-linecap: round; stroke-linejoin: round; }
+.kit-i.solid { fill: currentColor; stroke: none; }
