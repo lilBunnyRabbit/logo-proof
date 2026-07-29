@@ -1,6 +1,6 @@
 # Proof
 
-A local, zero-dependency webapp that renders a logo across 115 mockups — avatars, favicons, chat rows, link unfurls, app icons, print — so you can see where the mark breaks before you ship it. Load up to four marks and compare them in place. For anyone picking or refining a logo who needs more than a 512 px square on a white background.
+A local, zero-dependency webapp that renders a logo across 116 mockups — avatars, favicons, chat rows, link unfurls, app icons, print — so you can see where the mark breaks before you ship it. Load up to four marks and compare them in place. For anyone picking or refining a logo who needs more than a 512 px square on a white background.
 
 **[lilbunnyrabbit.github.io/logo-proof](https://lilbunnyrabbit.github.io/logo-proof/)**
 
@@ -54,6 +54,24 @@ Findings are listed worst first, with the offending surface swatch and the ratio
 
 Two things are deliberately left out. Tiles whose backdrop is a gradient or an image cannot be sampled, so they are excluded and the count says how many were measurable. Stress tests are excluded entirely — putting the mark on hostile surfaces is what those tiles are for, and auditing them would bury the findings that are actually news.
 
+## Colourways
+
+A logo is never just a logo — it is a mark on a surface, in an ink. **Colourways** in the rail hold three of those combinations, and every scene that paints a brand-coloured surface reads them, so one edit repaints the whole sheet.
+
+| | Surface | Mark | Type |
+| --- | --- | --- | --- |
+| **CW 1 · Stock** | off-white paper | full colour | near-black |
+| **CW 2 · Brand** | the accent pulled from the mark | knocked down to one readable ink | the same ink |
+| **CW 3 · Reverse** | the darkest colour in the mark, or coal | white | white |
+
+Those are the derived defaults — a fresh load proofs exactly as it always did, and each row says `derived` until you touch it. Pick any of the three swatches and that one is pinned; the row switches to `reset`, and pinned slots carry a red tick. **Full colour** is the mark's third state: reproduce the plate in all of its own colours instead of knocking it down to one ink. Clicking the Mark swatch turns it off, because picking an ink is how you say you want one.
+
+Knocking a mark down is done to the source, not with a filter — the SVG's inks are rewritten, a raster is re-tinted through its own alpha — so scale, nudge, the split comparison and the true-pixel rasteriser all still apply, and the legibility report scores the ink that actually prints rather than the palette the file happens to contain.
+
+**Card front** and **Card back** assign a colourway to each side of the business card, which is the case where the pairing is the whole decision. The **Business card — colourways** tile draws all three pairs at once so a front can be judged against its own back.
+
+CW 2 is also what `Accent` means everywhere else: the backdrop chip, the sign, the splash screen, the conference badge, the CTA band. Recolour it and all of them follow.
+
 ## Recolouring an SVG
 
 When the plate is vector, an **Ink** section lists every colour in the file — presentation attributes, inline styles, `<style>` blocks and gradient stops — sorted by how often each appears. Each row is the original colour, a picker and an editable hex field.
@@ -78,13 +96,15 @@ Registration controls. Everything except Trim is pushed through CSS variables, s
 | True pixels under 34 px | Rasterises small marks at their real CSS pixel count and upscales nearest-neighbour. On a retina screen a 16 px favicon is otherwise drawn with 32 real pixels, which flatters it. Leave this on when judging small sizes. |
 | Reset registration | Scale, padding, nudge and corner back to defaults. Mask and backdrop stay. |
 
-Below that, **Copy** sets the brand name, handle, domain, tagline, person and role that scenes print into their mocks, and **Sheet** toggles whole groups on and off, filters tiles by text, and sets tile size (260–520 px).
+Below that, **Colourways** holds the three ink combinations described above and assigns one to each side of the card, **Copy** sets the brand name, handle, domain, tagline, person and role that scenes print into their mocks, and **Sheet** toggles whole groups on and off, filters tiles by text, and sets tile size (260–520 px).
+
+Colourways are the one part of the rail that cannot go through a CSS variable: knocking a mark down changes the image itself, so the sheet re-renders on a short debounce rather than updating mid-drag.
 
 Settings are saved to `localStorage` under `logo-proof:v2`, so the registration survives a reload. The key is namespaced because GitHub Pages puts every tool on one origin and they all share the same storage. Plates are not saved — the images stay in memory only.
 
 ## The sheet
 
-115 scenes in eight groups:
+116 scenes in eight groups:
 
 | Group | Scenes | What is in it |
 | --- | --- | --- |
@@ -94,7 +114,7 @@ Settings are saved to `localStorage` under `logo-proof:v2`, so the registration 
 | Favicons & tabs | 13 | where marks go to die |
 | Link previews | 11 | unfurls and share cards |
 | App & device icons | 13 | home screens, docks, stores |
-| Print & physical | 15 | card, shirt, sign, sticker |
+| Print & physical | 16 | card, shirt, sign, sticker |
 | Stress tests | 16 | the ones that fail it |
 
 Each tile is a fixed-width design scaled to fit its column, captioned with the real pixel spec it is modelling.

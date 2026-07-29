@@ -91,7 +91,8 @@
     var st = S(), c = document.createElement('canvas');
     c.width = 1200; c.height = 630;
     var x = c.getContext('2d');
-    var accent = (st.info && st.info.accent) || '#2b2f36';
+    /* the brand colourway, so a pinned accent reaches the manifest and the card */
+    var accent = LogoLab.way('brand').bg;
     var t = LogoLab.ctx();
     x.fillStyle = '#0e1014';
     x.fillRect(0, 0, 1200, 630);
@@ -235,7 +236,8 @@
       return blobOf(draw(s, { shape: 'sharp' })).then(bytesOf).then(function (d) { return { size: s, data: d }; });
     })).then(function (parts) { return { name: 'favicon/favicon.ico', data: makeIco(parts) }; });
 
-    var accent = (st.info && st.info.accent) || '#2b2f36';
+    /* the brand colourway, so a pinned accent reaches the manifest and the card */
+    var accent = LogoLab.way('brand').bg;
 
     var manifest = JSON.stringify({
       name: t.brand,

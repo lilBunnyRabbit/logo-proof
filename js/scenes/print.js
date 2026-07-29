@@ -60,6 +60,14 @@
 .pr-cb-rule { width: 118px; height: 2px; margin: 24px 0 20px; }
 .pr-cb-lines { font: 400 30px/1.8 "Helvetica Neue", Helvetica, Arial, sans-serif; color: #3d4147; }
 
+/* the three colourways side by side — cards at half size, 970 → 485 */
+.pr-cw { display: grid; gap: 30px; }
+.pr-cw-row { display: grid; grid-template-columns: 96px 1fr; align-items: center; gap: 22px; }
+.pr-cw-l { display: grid; gap: 4px; }
+.pr-cw-n { font: 400 11px/1 "SF Mono", SFMono-Regular, Menlo, monospace; letter-spacing: .12em; color: #948d85; }
+.pr-cw-t { font: 500 13px/1.2 "Helvetica Neue", Helvetica, Arial, sans-serif; color: #46423d; }
+.pr-cw-pair { display: grid; grid-template-columns: 485px 485px; gap: 26px; }
+
 /* ── 3 letterhead — A4 ────────────────────────────────────────── */
 .pr-a4 {
   aspect-ratio: 210 / 297; background: #faf9f7; display: flex; flex-direction: column;
@@ -500,57 +508,108 @@
     return w;
   }
 
-  /* ── 1 · business card, front ─────────────────────────────────── */
+  /* ── 1–3 · business card ──────────────────────────────────────────
+     Both sides are built from a colourway, so the surface, the ink the
+     mark is knocked down to and the type all come from one decision made
+     in the rail. k scales the whole card: 1 is the 970 px original, and
+     the comparison tile draws the same artwork at half size. */
+
+  function cardFront(ctx, w, k) {
+    var card = ctx.el('div', 'pr-card pr-card-front');
+    card.style.background = w.bg;
+    card.appendChild(mark(ctx, Math.round(200 * k), { way: w.i, bg: 'transparent' }));
+    return card;
+  }
+
+  function cardBack(ctx, w, k) {
+    var px = function (v) { return (v * k).toFixed(1) + 'px'; };
+    var card = ctx.el('div', 'pr-card pr-card-back');
+    card.style.background = w.bg;
+    card.style.padding = px(58) + ' ' + px(64);
+
+    var name = ctx.el('div', 'pr-cb-name', ctx.person);
+    name.style.fontSize = px(46);
+    name.style.color = w.ink;
+
+    var role = ctx.el('div', 'pr-cb-role', ctx.role);
+    role.style.fontSize = px(30);
+    role.style.marginTop = px(10);
+    role.style.color = w.dim;
+
+    /* the rule is the second ink — the mark's own on a knocked-down side,
+       the brand colour when the mark keeps all of its colours */
+    var rule = ctx.el('div', 'pr-cb-rule');
+    rule.style.background = w.mark || ctx.way('brand').bg;
+    rule.style.width = px(118);
+    rule.style.height = Math.max(1, 2 * k).toFixed(1) + 'px';
+    rule.style.margin = px(24) + ' 0 ' + px(20);
+
+    var lines = ctx.el('div', 'pr-cb-lines', [
+      ctx.el('div', null, emailOf(ctx)),
+      ctx.el('div', null, PHONE),
+      ctx.el('div', null, ctx.domain)
+    ]);
+    lines.style.fontSize = px(30);
+    lines.style.color = w.soft;
+
+    card.appendChild(mark(ctx, Math.round(110 * k), { way: w.i, bg: 'transparent' }));
+    card.appendChild(ctx.el('div', null, [name, role, rule, lines]));
+    return card;
+  }
 
   L.register({
     id: 'print-card-front',
     group: 'print',
     title: 'Business card — front',
     spec: '3.5 × 2 IN · MARK 200 PX',
-    note: 'solid accent field, one ink, square-cut',
+    note: 'square-cut stock, colourway set in the rail',
     width: 1050,
     wide: true,
     render: function (ctx) {
       var root = ctx.el('div', 'pr-studio pr-studio-w');
-      var card = ctx.el('div', 'pr-card pr-card-front');
-      card.style.background = ctx.accent;
-      card.appendChild(ink(ctx, 200, isLight(ctx.accentInk)));
-      root.appendChild(card);
+      root.appendChild(cardFront(ctx, ctx.cardWay('front'), 1));
       return root;
     }
   });
-
-  /* ── 2 · business card, back ──────────────────────────────────── */
 
   L.register({
     id: 'print-card-back',
     group: 'print',
     title: 'Business card — back',
     spec: '3.5 × 2 IN · MARK 110 PX',
-    note: 'off-white stock, mark at 10 mm beside 12 pt type',
+    note: 'mark at 10 mm beside 12 pt type, colourway set in the rail',
     width: 1050,
     wide: true,
     render: function (ctx) {
       var root = ctx.el('div', 'pr-studio pr-studio-w');
-      var card = ctx.el('div', 'pr-card pr-card-back');
-      card.appendChild(mark(ctx, 110));
+      root.appendChild(cardBack(ctx, ctx.cardWay('back'), 1));
+      return root;
+    }
+  });
 
-      var rule = ctx.el('div', 'pr-cb-rule');
-      rule.style.background = ctx.accent;
-
-      var lines = ctx.el('div', 'pr-cb-lines', [
-        ctx.el('div', null, emailOf(ctx)),
-        ctx.el('div', null, PHONE),
-        ctx.el('div', null, ctx.domain)
-      ]);
-
-      card.appendChild(ctx.el('div', null, [
-        ctx.el('div', 'pr-cb-name', ctx.person),
-        ctx.el('div', 'pr-cb-role', ctx.role),
-        rule,
-        lines
-      ]));
-      root.appendChild(card);
+  L.register({
+    id: 'print-card-ways',
+    group: 'print',
+    title: 'Business card — colourways',
+    spec: '3 COLOURWAYS · FRONT + BACK',
+    note: 'all three combinations, so a pair can be judged as a pair',
+    width: 1180,
+    wide: true,
+    render: function (ctx) {
+      var root = ctx.el('div', 'pr-studio pr-cw');
+      [0, 1, 2].forEach(function (i) {
+        var w = ctx.way(i);
+        root.appendChild(ctx.el('div', 'pr-cw-row', [
+          ctx.el('div', 'pr-cw-l', [
+            ctx.el('b', 'pr-cw-n', 'CW ' + (i + 1)),
+            ctx.el('span', 'pr-cw-t', w.label)
+          ]),
+          ctx.el('div', 'pr-cw-pair', [
+            cardFront(ctx, w, 0.5),
+            cardBack(ctx, w, 0.5)
+          ])
+        ]));
+      });
       return root;
     }
   });

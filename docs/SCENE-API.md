@@ -84,10 +84,34 @@ Do not set a height on the root element unless the mock genuinely has one.
 | `ctx.domain` | Bare domain, e.g. `astra-ai.co`. |
 | `ctx.tagline` | One-line description. |
 | `ctx.person`, `ctx.role` | A human name and job title, for business cards and signatures. |
-| `ctx.accent` | Hex pulled from the mark — use for brand-coloured surfaces. |
-| `ctx.accentInk` | `#fff` or near-black; readable on `ctx.accent`. |
+| `ctx.accent` | Brand surface colour. Shorthand for `ctx.way('brand').bg`. |
+| `ctx.accentInk` | Readable on `ctx.accent`. Shorthand for `ctx.way('brand').ink`. |
+| `ctx.way(n)` | A colourway — see below. `n` is `0`–`2` or `'stock'`/`'brand'`/`'reverse'`. |
+| `ctx.cardWay(side)` | The colourway the user assigned to `'front'` or `'back'`. |
+| `ctx.mix(a, b, t)` | Blend two hexes. `t` of `0` is `a`, `1` is `b`. |
 | `ctx.palette` | `[{hex, rgb, share, chroma, lum}]`, most-used first, may be empty. |
 | `ctx.img` | `{src, w, h}` of the current plate. Read-only; prefer `ctx.logo`. |
+
+### Colourways
+
+A colourway is one ink combination for a surface. Three of them are editable in
+the rail — the paper side, the brand field, the dark side — and each resolves to:
+
+| field | what it is |
+| --- | --- |
+| `bg` | the surface colour |
+| `mark` | the single ink the mark is knocked down to, or `null` for full colour |
+| `ink` | headline type and primary rules |
+| `soft` | body copy |
+| `dim` | secondary copy — roles, captions |
+| `hair` | hairline rules |
+| `light` | `true` when `bg` is light enough to want dark type |
+| `i` | its index, for passing straight to `ctx.logo(size, { way: w.i })` |
+
+Reach for a colourway whenever a scene invents a brand-coloured surface — a card,
+a sign, a splash screen. Do not hardcode a second brand colour: a scene that needs
+one is asking for a colourway. Never assume `mark` is set; `null` is the default on
+the stock way and means "reproduce the plate as it is".
 
 ### `ctx.logo(size, opts)`
 
@@ -99,6 +123,14 @@ Do not set a height on the root element unless the mock genuinely has one.
 | `radius` | px number or CSS string; overrides the shape's radius | — |
 | `ring` | full `box-shadow` value, e.g. `'0 0 0 2px #fff'` | — |
 | `pixel` | `true` forces nearest-neighbour scaling | auto under 20 px |
+| `way` | a colourway index or id — takes its `bg` and knocks the mark down to its `mark` | — |
+| `mono` | one ink to knock the mark down to, or `null` to keep its own colours | — |
+
+`way` and `mono` are done at the source, not with a CSS filter, so the result is
+still an ordinary image: scale, nudge, the split clip and the true-pixel
+rasteriser all keep working on it. An explicit `bg` or `mono` overrides whatever
+the colourway said, which is how a scene takes a colourway's ink onto a surface it
+paints itself: `ctx.logo(200, { way: w.i, bg: 'transparent' })`.
 
 The element it returns is opaque: with several plates loaded it holds one
 absolutely-positioned layer per plate, and the compare mode decides whether they

@@ -405,6 +405,53 @@ input[type="range"]::-moz-range-thumb {
 html.only-bad .tile:not(.bad):not(.soft) { display: none; }
 html.only-bad .grp:not(:has(.tile.bad)):not(:has(.tile.soft)) { display: none; }
 
+/* ── colourways ───────────────────────────────────────────────── */
+
+.ways { display: grid; gap: 9px; margin-bottom: 12px; }
+
+.way { padding: 8px 9px 9px; border: 1px solid var(--hair); border-radius: 2px; }
+
+.way-h { display: flex; align-items: baseline; gap: 7px; margin-bottom: 7px; }
+.way-n { font-size: 9.5px; color: var(--reg); letter-spacing: .12em; }
+.way-t { font-size: 12px; color: var(--ink); }
+.way-hint { font-size: 10px; color: var(--ink-3); }
+
+.way-auto {
+  margin-left: auto; font: 9.5px var(--f-mono); letter-spacing: .1em;
+  text-transform: uppercase; color: var(--ink-2);
+  background: none; border: 0; padding: 0; cursor: pointer;
+}
+.way-auto:disabled { color: var(--ink-3); cursor: default; }
+.way-auto:not(:disabled):hover { color: var(--reg); }
+
+.way-slots { display: grid; grid-template-columns: repeat(3, 1fr); gap: 7px; }
+.way-cell { display: grid; gap: 4px; cursor: pointer; }
+.way-cell input[type="color"] {
+  -webkit-appearance: none; appearance: none;
+  width: 100%; height: 22px; padding: 0; cursor: pointer;
+  border: 1px solid var(--rule); background: transparent; border-radius: 2px;
+}
+.way-cell input[type="color"]::-webkit-color-swatch-wrapper { padding: 2px; }
+.way-cell input[type="color"]::-webkit-color-swatch { border: 0; border-radius: 1px; }
+.way-cell input[type="color"]::-moz-color-swatch { border: 0; }
+
+.way-cell.is-off input[type="color"] { opacity: .3; }
+
+.way-cl { font-size: 9.5px; color: var(--ink-3); letter-spacing: .04em; }
+/* a pinned slot is no longer following the mark */
+.way-cl.is-pin { color: var(--ink-2); }
+.way-cl.is-pin::after { content: " ·"; color: var(--reg); }
+
+.way-full {
+  margin-top: 7px; font: 10px var(--f-body); color: var(--ink-2);
+  background: transparent; border: 1px solid var(--rule); border-radius: 2px;
+  padding: 3px 7px; cursor: pointer;
+}
+.way-full[aria-pressed="true"] { background: var(--ink); border-color: var(--ink); color: var(--paper); }
+
+.way-note { margin: 8px 0 0; font: 11px/1.5 var(--f-body); color: var(--ink-3); }
+.way-note b { color: var(--ink-2); font-weight: 500; }
+
 /* ── ink editor ───────────────────────────────────────────────── */
 
 .inks { display: grid; gap: 5px; margin-bottom: 10px; }

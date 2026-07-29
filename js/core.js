@@ -39,6 +39,13 @@
     bg: 'transparent',
     bgCustom: '#4f46e5',
     safe: false,
+    /* ink combinations, shared by every scene — see colourways below */
+    ways: [
+      { bg: 'auto', mark: 'auto', ink: 'auto' },
+      { bg: 'auto', mark: 'auto', ink: 'auto' },
+      { bg: 'auto', mark: 'auto', ink: 'auto' }
+    ],
+    card: { front: 1, back: 0 },
     /* sheet */
     gray: false,
     squint: 0,
@@ -59,6 +66,17 @@
     { id: 'ink',         label: 'Ink',    css: '#1f2937' },
     { id: 'accent',      label: 'Accent', css: 'accent' }
   ];
+
+  /* A colourway is one ink combination for a surface: what the surface prints
+     in, what the mark prints in on it, and what type and rules print in.
+     Three of them cover identity work — the paper side, the brand field, the
+     dark side — and the card decides which side gets which. */
+  var WAYS = [
+    { id: 'stock',   label: 'Stock',   hint: 'paper side' },
+    { id: 'brand',   label: 'Brand',   hint: 'accent field' },
+    { id: 'reverse', label: 'Reverse', hint: 'dark side' }
+  ];
+  var PAPER = '#faf9f7', COAL = '#14161a';
 
   /* ── tiny DOM helpers ──────────────────────────────────────── */
 
@@ -150,25 +168,165 @@
   }
 
   function resolveBg(v) {
-    var p = activePlate();
-    if (v === 'accent') return (p && p.info && p.info.accent) || '#2b2f36';
+    if (v === 'accent') return resolveWay('brand').bg;
     return v;
+  }
+
+  /* ── colour maths ──────────────────────────────────────────── */
+
+  function hexRgb(h) {
+    h = String(h == null ? '' : h).replace('#', '');
+    if (h.length === 3) h = h[0] + h[0] + h[1] + h[1] + h[2] + h[2];
+    var n = parseInt(h, 16);
+    if (h.length !== 6 || isNaN(n)) return [0, 0, 0];
+    return [(n >> 16) & 255, (n >> 8) & 255, n & 255];
+  }
+  /* hexStr / lumHex, not hexOf / lumOf — the audit owns those names further
+     down and a second declaration would quietly replace it. */
+  function hexStr(r, g, b) {
+    return '#' + [r, g, b].map(function (v) {
+      return ('0' + clamp(Math.round(v), 0, 255).toString(16)).slice(-2);
+    }).join('');
+  }
+  function lumHex(h) {
+    var c = hexRgb(h);
+    if (window.Palette && Palette.lum) return Palette.lum(c[0], c[1], c[2]);
+    return (0.2126 * c[0] + 0.7152 * c[1] + 0.0722 * c[2]) / 255;
+  }
+  /* t = 0 is a, t = 1 is b */
+  function mix(a, b, t) {
+    var x = hexRgb(a), y = hexRgb(b);
+    return hexStr(x[0] + (y[0] - x[0]) * t, x[1] + (y[1] - x[1]) * t, x[2] + (y[2] - x[2]) * t);
+  }
+  function readableOn(h) {
+    var c = hexRgb(h);
+    if (window.Palette && Palette.readable) return Palette.readable(c[0], c[1], c[2]);
+    return lumHex(h) > 0.5 ? COAL : '#ffffff';
+  }
+
+  /* ── colourways ────────────────────────────────────────────────
+     'auto' derives from the plate, so a fresh load proofs the way it always
+     did; pick a colour in the rail and it is pinned. Scenes read these
+     through ctx.way(), which is also what ctx.accent resolves to — so
+     editing CW 2 repaints every brand-coloured surface on the sheet. */
+
+  function autoWay(i) {
+    var info = (activePlate() || {}).info || {};
+    if (i === 1) {
+      var accent = info.accent || '#2b2f36';
+      var on = info.accentInk || readableOn(accent);
+      return { bg: accent, mark: on, ink: on };
+    }
+    if (i === 2) {
+      var dark = (info.colors || []).slice().sort(function (a, b) { return a.lum - b.lum; })[0];
+      return { bg: dark && dark.lum < 0.2 ? dark.hex : COAL, mark: '#ffffff', ink: '#ffffff' };
+    }
+    return { bg: PAPER, mark: 'full', ink: '#17181a' };
+  }
+
+  function wayIndex(which) {
+    if (typeof which === 'string') {
+      for (var n = 0; n < WAYS.length; n++) if (WAYS[n].id === which) return n;
+      return 0;
+    }
+    return clamp(typeof which === 'number' ? which : 0, 0, WAYS.length - 1);
+  }
+
+  /* mark comes back null when the plate is to be reproduced in its own
+     colours; any other value is the single ink it is knocked down to. */
+  function resolveWay(which) {
+    var i = wayIndex(which);
+    var set = state.ways[i] || {};
+    var auto = autoWay(i);
+    var pin = function (k) { return set[k] && set[k] !== 'auto' ? set[k] : auto[k]; };
+    var bg = pin('bg'), ink = pin('ink'), mark = pin('mark');
+    return {
+      i: i, id: WAYS[i].id, label: WAYS[i].label,
+      bg: bg,
+      mark: mark === 'full' ? null : mark,
+      ink: ink,
+      soft: mix(ink, bg, 0.18),   // body copy
+      dim: mix(ink, bg, 0.38),    // secondary copy
+      hair: mix(ink, bg, 0.84),   // rules
+      light: lumHex(bg) > 0.55
+    };
+  }
+
+  function cardWay(side) { return resolveWay(state.card[side === 'back' ? 'back' : 'front']); }
+
+  /* localStorage may hold an older or hand-edited shape */
+  function normalizeWays() {
+    var got = Array.isArray(state.ways) ? state.ways : [];
+    state.ways = WAYS.map(function (_, i) {
+      var w = got[i] && typeof got[i] === 'object' ? got[i] : {};
+      return { bg: w.bg || 'auto', mark: w.mark || 'auto', ink: w.ink || 'auto' };
+    });
+    var c = state.card && typeof state.card === 'object' ? state.card : {};
+    state.card = { front: wayIndex(c.front), back: wayIndex(c.back) };
+  }
+
+  /* One-ink reproduction, done at the source rather than with a CSS filter so
+     the layer stays a plain <img>: per-plate scale and nudge, the split clip
+     and the true-pixel rasteriser all keep working on it. */
+  function monoSrc(plate, color) {
+    if (!color) return plate.src;
+    plate.mono = plate.mono || {};
+    var key = color + '|' + plate.src.length;
+    if (plate.mono[key]) return plate.mono[key];
+    var url = null;
+    /* trimmed plates are re-cut rasters, so the SVG source no longer matches */
+    if (plate.vector && plate.svgSource && !plate.trim && window.Recolor) {
+      var map = {};
+      (plate.inks || []).forEach(function (c) { map[c.hex] = color; });
+      url = Recolor.dataUrl((plate.inks && plate.inks.length)
+        ? Recolor.apply(plate.svgSource, map)
+        : Recolor.applyBase(plate.svgSource, color));
+    } else if (plate.plateEl) {
+      try {
+        var iw = plate.plateEl.naturalWidth || plate.w;
+        var ih = plate.plateEl.naturalHeight || plate.h;
+        var c2 = document.createElement('canvas');
+        c2.width = iw; c2.height = ih;
+        var x = c2.getContext('2d');
+        x.drawImage(plate.plateEl, 0, 0, iw, ih);
+        x.globalCompositeOperation = 'source-in';   /* keep alpha, replace colour */
+        x.fillStyle = color;
+        x.fillRect(0, 0, iw, ih);
+        url = c2.toDataURL('image/png');
+      } catch (e) { url = null; }
+    }
+    plate.mono[key] = url || plate.src;
+    return plate.mono[key];
+  }
+
+  /* the decoded copy the true-pixel rasteriser draws a knocked-down mark from */
+  function monoEl(plate, src) {
+    plate.monoEl = plate.monoEl || {};
+    if (!plate.monoEl[src]) {
+      var im = new Image();
+      im.onload = function () { refreshTruePixels(); };
+      im.src = src;
+      plate.monoEl[src] = im;
+    }
+    return plate.monoEl[src];
   }
 
   /* Honest small sizes: rasterise at the real CSS pixel count, then let the
      browser blow it up with nearest-neighbour. A retina screen otherwise
      renders a 16 px favicon with 32 real pixels and flatters the mark. */
-  function truePixelSrc(plate, px) {
-    var key = px + '|' + plate.zoom + '|' + plate.ox + '|' + plate.oy + '|' + plate.src.length;
+  function truePixelSrc(plate, px, srcEl, tag) {
+    srcEl = srcEl || plate.plateEl;
+    var key = px + '|' + plate.zoom + '|' + plate.ox + '|' + plate.oy + '|' + (tag || plate.src.length);
     if (plate.tp && plate.tp[key]) return plate.tp[key];
-    if (!plate.plateEl) return plate.src;
+    /* a knocked-down copy may still be decoding — its onload runs us again */
+    if (!srcEl || !srcEl.complete) return null;
     var c = document.createElement('canvas');
     c.width = px; c.height = px;
     var x = c.getContext('2d');
     x.imageSmoothingEnabled = true;
     x.imageSmoothingQuality = 'high';
-    var iw = plate.plateEl.naturalWidth || plate.w;
-    var ih = plate.plateEl.naturalHeight || plate.h;
+    var iw = srcEl.naturalWidth || plate.w;
+    var ih = srcEl.naturalHeight || plate.h;
     var fit = Math.min(px / iw, px / ih);
     var fw = iw * fit, fh = ih * fit;
     var dw = fw * plate.zoom, dh = fh * plate.zoom;
@@ -176,9 +334,9 @@
     var dy = (px - dh) / 2 + (plate.oy / 100) * fh * plate.zoom;
     var url;
     try {
-      x.drawImage(plate.plateEl, dx, dy, dw, dh);
+      x.drawImage(srcEl, dx, dy, dw, dh);
       url = c.toDataURL('image/png');
-    } catch (e) { url = plate.src; }
+    } catch (e) { url = srcEl.src || plate.src; }
     plate.tp = plate.tp || {};
     plate.tp[key] = url;
     return url;
@@ -194,7 +352,11 @@
         var plate = state.plates[parseInt(layer.dataset.p, 10)];
         var img = layer.firstChild;
         if (!plate || !img) return;
-        var src = truePixelSrc(plate, px);
+        var mono = layer.dataset.mono || '';
+        var base = mono ? monoSrc(plate, mono) : plate.src;
+        var src = truePixelSrc(plate, px, mono ? monoEl(plate, base) : plate.plateEl,
+                               mono ? mono + '|' + base.length : null);
+        if (!src) return;
         if (img.getAttribute('src') !== src) img.setAttribute('src', src);
         img.style.width = px + 'px';
         img.style.height = px + 'px';
@@ -211,6 +373,12 @@
     var list = shownPlates();
     var n = list.length;
 
+    /* a colourway supplies both the surface and the ink the mark prints in;
+       an explicit bg or mono still wins over it */
+    var way = opts.way != null ? resolveWay(opts.way) : null;
+    var mono = opts.mono != null ? (opts.mono || null) : (way ? way.mark : null);
+    var bg = opts.bg != null ? opts.bg : (way ? way.bg : null);
+
     var box = el('div', 'lg lg-' + shape);
     box.style.width = s + 'px';
     box.style.height = s + 'px';
@@ -218,7 +386,7 @@
     box.dataset.s = s;
     if (opts.pad != null) box.style.setProperty('--lg-pad', opts.pad);
     if (opts.radius != null) box.style.borderRadius = typeof opts.radius === 'number' ? opts.radius + 'px' : opts.radius;
-    if (opts.bg) box.style.setProperty('--lg-bg', resolveBg(opts.bg));
+    if (bg) box.style.setProperty('--lg-bg', resolveBg(bg));
     if (opts.ring) box.style.boxShadow = opts.ring;
 
     var tp = state.truePx && s <= TRUE_PX_MAX && !opts.pixel;
@@ -233,8 +401,9 @@
         var a = (i / n) * 100, b = ((n - 1 - i) / n) * 100;
         layer.style.clipPath = 'inset(0 ' + b.toFixed(3) + '% 0 ' + a.toFixed(3) + '%)';
       }
+      if (mono) layer.dataset.mono = mono;
       var img = new Image();
-      img.src = plate.src;
+      img.src = mono ? monoSrc(plate, mono) : plate.src;
       img.alt = '';
       img.decoding = 'async';
       layer.appendChild(img);
@@ -283,6 +452,7 @@
     var t = state.text;
     var p = activePlate();
     var info = (p && p.info) || {};
+    var brand = resolveWay('brand');
     return {
       logo: logo,
       logoWide: logoWide,
@@ -295,8 +465,13 @@
       tagline: t.tagline || '',
       person: t.person || 'Alex Chen',
       role: t.role || 'Founder',
-      accent: info.accent || '#2b2f36',
-      accentInk: info.accentInk || '#ffffff',
+      /* the brand colourway is the one source of "the brand colour", so a
+         scene painting an accent surface follows the rail automatically */
+      accent: brand.bg,
+      accentInk: brand.ink,
+      way: resolveWay,
+      cardWay: cardWay,
+      mix: mix,
       palette: info.colors || [],
       state: state
     };
@@ -472,6 +647,15 @@
     }).join('');
   }
 
+  /* A mark printed in a colourway is knocked down to one ink, so the plate's
+     own palette says nothing about whether it reads on that surface. */
+  function inksIn(node, plate) {
+    var layer = node.querySelector('.lg-l[data-mono]');
+    if (!layer) return plate.info.colors;
+    var c = hexRgb(layer.dataset.mono);
+    return [{ hex: layer.dataset.mono, rgb: c, share: 1, chroma: 0, lum: lumOf(c[0], c[1], c[2]) }];
+  }
+
   var lastAudit = { rows: [], checked: 0, total: 0 };
 
   function audit() {
@@ -494,7 +678,7 @@
       marks.forEach(function (m) {
         var surf = surfaceOf(m);
         if (!surf) return;
-        var r = scoreAgainst(p.info.colors, surf);
+        var r = scoreAgainst(inksIn(m, p), surf);
         if (!worst || r < worst.r) worst = { r: r, surf: surf };
       });
       if (!worst) return;
@@ -675,7 +859,7 @@
       plate.size = meta.size;
       plate.vector = /svg/i.test(plate.type);
       plate.info = window.Palette ? Palette.analyze(im) : null;
-      plate.tp = {};
+      plate.tp = {}; plate.mono = {}; plate.monoEl = {};
 
       if (!opts.keepSource) {
         plate.svgSource = window.Recolor ? Recolor.decode(src) : null;
@@ -712,7 +896,7 @@
       plate.plateEl = plate.el;
       plate.w = (plate.el && plate.el.naturalWidth) || plate.w;
       plate.h = (plate.el && plate.el.naturalHeight) || plate.h;
-      plate.tp = {};
+      plate.tp = {}; plate.mono = {}; plate.monoEl = {};
       return done && done();
     }
     try {
@@ -723,7 +907,7 @@
         plate.w = im2.naturalWidth;
         plate.h = im2.naturalHeight;
         plate.plateEl = im2;
-        plate.tp = {};
+        plate.tp = {}; plate.mono = {}; plate.monoEl = {};
         done && done();
       };
       im2.onerror = function () { done && done(); };
@@ -735,7 +919,9 @@
     all('.lg-l').forEach(function (layer) {
       var plate = state.plates[parseInt(layer.dataset.p, 10)];
       var img = layer.firstChild;
-      if (plate && img) img.setAttribute('src', plate.src);
+      if (!plate || !img) return;
+      var mono = layer.dataset.mono || '';
+      img.setAttribute('src', mono ? monoSrc(plate, mono) : plate.src);
     });
   }
 
@@ -770,6 +956,7 @@
     paintThumbHint();
     paintSpec();
     paintInk();
+    paintWays();      /* derived colours follow the active plate */
     paintWarnings();
     var has = state.plates.length > 0;
     $('#btn-export').disabled = !has;
@@ -888,6 +1075,117 @@
     box.appendChild(el('p', null, msg));
   }
 
+  /* ── colourway editor ──────────────────────────────────────── */
+
+  var wayT = null;
+  function wayChanged() {
+    save();
+    paintWays();
+    clearTimeout(wayT);
+    wayT = setTimeout(renderSheet, 150);   /* the sources change, so re-render */
+  }
+
+  /* one swatch: a colour input that shows the derived value until it is set */
+  function waySlot(i, key, label) {
+    var derived = resolveWay(i);
+    var pinned = state.ways[i][key] !== 'auto' && state.ways[i][key] !== 'full';
+    /* a full-colour mark has no single ink to show, so the swatch goes quiet */
+    var off = key === 'mark' && !derived.mark;
+    var cell = el('label', 'way-cell' + (off ? ' is-off' : ''));
+    var shown = key === 'mark' ? (derived.mark || derived.ink) : derived[key];
+
+    var pick = el('input', 'way-sw');
+    pick.type = 'color';
+    pick.value = shown;
+    pick.setAttribute('aria-label', WAYS[i].label + ' ' + label);
+    pick.addEventListener('input', function () {
+      state.ways[i][key] = pick.value;
+      wayChanged();
+    });
+
+    cell.appendChild(pick);
+    cell.appendChild(el('span', 'way-cl' + (pinned ? ' is-pin' : ''), label));
+    return cell;
+  }
+
+  function paintWays() {
+    var host = $('#waylist');
+    if (!host) return;
+    host.textContent = '';
+
+    WAYS.forEach(function (w, i) {
+      var set = state.ways[i];
+      var auto = set.bg === 'auto' && set.mark === 'auto' && set.ink === 'auto';
+      var row = el('div', 'way');
+
+      var reset = el('button', 'way-auto', auto ? 'derived' : 'reset');
+      reset.type = 'button';
+      reset.disabled = auto;
+      reset.title = 'Go back to colours pulled from the mark';
+      reset.addEventListener('click', function () {
+        state.ways[i] = { bg: 'auto', mark: 'auto', ink: 'auto' };
+        wayChanged();
+      });
+
+      row.appendChild(el('div', 'way-h', [
+        el('b', 'way-n mono', 'CW ' + (i + 1)),
+        el('span', 'way-t', w.label),
+        el('span', 'way-hint', w.hint),
+        reset
+      ]));
+
+      /* Mark has a third state the others do not: reproduce the plate in its
+         own colours instead of knocking it down to one ink. */
+      var full = el('button', 'way-full', 'Full colour');
+      full.type = 'button';
+      full.setAttribute('aria-pressed', String(!resolveWay(i).mark));
+      full.title = 'Print the mark in all of its own colours';
+      full.addEventListener('click', function () {
+        var on = full.getAttribute('aria-pressed') === 'true';
+        state.ways[i].mark = on ? resolveWay(i).ink : 'full';
+        wayChanged();
+      });
+
+      row.appendChild(el('div', 'way-slots', [
+        waySlot(i, 'bg', 'Surface'),
+        waySlot(i, 'mark', 'Mark'),
+        waySlot(i, 'ink', 'Type')
+      ]));
+      row.appendChild(full);
+      host.appendChild(row);
+    });
+  }
+
+  function paintCardSides() {
+    ['front', 'back'].forEach(function (side) {
+      var seg = $('#card' + side);
+      if (!seg || seg.children.length) return;
+      WAYS.forEach(function (w, i) {
+        var b = el('button', null, 'CW ' + (i + 1));
+        b.type = 'button';
+        b.setAttribute('role', 'radio');
+        b.title = w.label + ' — ' + w.hint;
+        b.addEventListener('click', function () {
+          state.card[side] = i;
+          markCardSides();
+          wayChanged();
+        });
+        seg.appendChild(b);
+      });
+    });
+    markCardSides();
+  }
+
+  function markCardSides() {
+    ['front', 'back'].forEach(function (side) {
+      var seg = $('#card' + side);
+      if (!seg) return;
+      Array.prototype.forEach.call(seg.children, function (b, i) {
+        b.setAttribute('aria-checked', String(state.card[side] === i));
+      });
+    });
+  }
+
   /* ── ink editor ────────────────────────────────────────────── */
 
   var inkT = null;
@@ -1004,6 +1302,7 @@
       localStorage.setItem(KEY, JSON.stringify({
         shape: state.shape, pad: state.pad, round: state.round,
         bg: state.bg, bgCustom: state.bgCustom,
+        ways: state.ways, card: state.card,
         safe: state.safe, gray: state.gray, tile: state.tile, truePx: state.truePx,
         compare: state.compare, blinkMs: state.blinkMs,
         hidden: state.hidden, text: state.text,
@@ -1025,6 +1324,7 @@
         if (k in state) state[k] = s[k];
       });
     } catch (e) { /* ignore */ }
+    finally { normalizeWays(); }
   }
 
   /* ── blink comparator ──────────────────────────────────────── */
@@ -1361,6 +1661,8 @@
       if (window.ProofExport) ProofExport.open();
     });
 
+    paintCardSides();
+
     pushVars();
     paintAll();
     renderSheet();
@@ -1380,6 +1682,8 @@
     icon: icon,
     el: el,
     resolveBg: resolveBg,
+    way: resolveWay,
+    cardWay: cardWay,
     refit: fitAll,
     audit: audit,
     load: loadPlate,

@@ -97,6 +97,18 @@ const LogoLab = {
   icon: () => new Node('svg')
 };
 
+const WAYS = [
+  { i: 0, id: 'stock', label: 'Stock', bg: '#faf9f7', mark: null, ink: '#17181a', soft: '#3d4147', dim: '#6d7278', hair: '#e2e0dc', light: true },
+  { i: 1, id: 'brand', label: 'Brand', bg: '#5b6cff', mark: '#ffffff', ink: '#ffffff', soft: '#d6dbff', dim: '#b2baff', hair: '#6b7aff', light: false },
+  { i: 2, id: 'reverse', label: 'Reverse', bg: '#14161a', mark: '#ffffff', ink: '#ffffff', soft: '#d0d1d3', dim: '#8f9195', hair: '#33353a', light: false }
+];
+const wayOf = (which) => {
+  const i = typeof which === 'string' ? WAYS.findIndex((w) => w.id === which) : which;
+  const w = WAYS[i];
+  if (!w) throw new Error('ctx.way() needs 0-2 or stock|brand|reverse, got ' + JSON.stringify(which));
+  return w;
+};
+
 const ctx = {
   el,
   icon: () => new Node('svg'),
@@ -105,8 +117,15 @@ const ctx = {
     if (opts && opts.shape && !['auto', 'circle', 'squircle', 'rounded', 'sharp'].includes(opts.shape)) {
       throw new Error('unknown shape "' + opts.shape + '"');
     }
+    if (opts && opts.way != null) wayOf(opts.way);
     return new Node('div');
   },
+  way: wayOf,
+  cardWay: (side) => {
+    if (side !== 'front' && side !== 'back') throw new Error('ctx.cardWay() takes "front" or "back", got ' + JSON.stringify(side));
+    return WAYS[side === 'front' ? 1 : 0];
+  },
+  mix: (a, b) => (typeof a === 'string' && typeof b === 'string' ? a : '#000000'),
   logoWide: (w, h) => {
     if (!(w > 0 && h > 0)) throw new Error('ctx.logoWide() needs positive w/h');
     return new Node('div');
